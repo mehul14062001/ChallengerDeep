@@ -1,9 +1,9 @@
 import os
 import threading
-import time
 import multiprocessing
 import sys
 import subprocess
+import math
 
 
 #####################
@@ -338,7 +338,13 @@ class CustomFileThread(object):
                         line[d]=str(line[d].replace("\"","").replace("'",""))
             result.append(line)
         return result
-
+    @staticmethod
+    def write_file(file_path,data):
+        with open(file_path,"w") as f:
+            data_raw=''
+            for i in data:
+                data_raw+=(','.join([str(j) for j in i])+'\n')
+            f.write(data_raw)
 
 #############################
 ## CUSTOM DATAFRAME THREAD ##
@@ -456,6 +462,13 @@ class CustomFileProcess(object):
                         line[d]=str(line[d].replace("\"","").replace("'",""))
             result.append(line)
         return result
+    @staticmethod
+    def write_file(file_path,data):
+        with open(file_path,"w") as f:
+            data_raw=''
+            for i in data:
+                data_raw+=(','.join([str(j) for j in i])+'\n')
+            f.write(data_raw)
 
 
 ##############################
@@ -542,6 +555,12 @@ class FilePandas(object):
         import pandas as pd
         df=pd.read_csv(file_path)
         return df
+    @staticmethod
+    def write_file(file_path,data):
+        package_manager=PackageManager(package_name='pandas')
+        package_manager.install_package()
+        import pandas as pd
+        data.to_csv(file_path)
 
 
 ######################
@@ -587,6 +606,12 @@ class FileDask(object):
         import dask.dataframe as dd
         df=dd.read_csv(file_path)
         return df
+    @staticmethod
+    def write_file(file_path,data):
+        package_manager=PackageManager(package_name='"dask[distributed,dataframe]"')
+        package_manager.install_package()
+        import dask.dataframe as dd
+        data.to_csv(file_path,single_file=True)
 
 
 ####################
@@ -618,3 +643,56 @@ class DataFrameDask(object):
                 if c=='!=':
                     filtered_df=filtered_df[filtered_df[columns[j]]!=values[j]]
         return DataFrameDask(data=filtered_df[columns])
+
+
+################
+## STATISTICS ##
+################
+
+class Statistics(object):
+    @staticmethod
+    def sample_mean(X):
+        if len(X)!=0:
+            x_bar=sum(X)/len(X)
+            return x_bar
+    @staticmethod
+    def population_mean(X):
+        mu=Statistics.sample_mean(X=X)
+        return mu
+    @staticmethod
+    def point_estimate(X):
+        x_bar=Statistics.sample_mean(X=X)
+        return x_bar
+    @staticmethod
+    def trimmed_sample_mean(X,low,high):
+        return Statistics.sample_mean(X=X[low:high+1])
+    @staticmethod
+    def sample_median(X):
+        x_tilde=sorted(X)[len(X)//2]
+        if len(X)%2==0:
+            x_tilde=Statistics.sample_mean(X=sorted(X)[len(X)//2-1:len(X)//2+1])
+        return x_tilde
+    @staticmethod
+    def sample_median(X):
+        mu_tilde=sorted(X)[len(X)//2]
+        if len(X)%2==0:
+            mu_tilde=Statistics.sample_mean(X=sorted(X)[len(X)//2-1:len(X)//2+1])
+        return mu_tilde
+    @staticmethod
+    def population_median(X):
+        mu_tilde=Statistics.sample_median(X=X)
+        return mu_tilde
+    @staticmethod
+    def percentile_value(X,percentile):
+        idx=percentile*(len(X)-1)*0.01
+        floor_idx=math.floor(idx)
+        ceil_idx=math.ceil(idx)
+        f=idx-math.floor(idx)
+        val=(1-f)*sorted(X)[floor_idx]+f*sorted(X)[ceil_idx]
+        return val
+    @staticmethod
+    def interquartile_range(X):
+        lower_fourth=Statistics.percentile_value(X=X,percentile=25)
+        upper_fourth=Statistics.percentile_value(X=X,percentile=75)
+        iqr=upper_fourth-lower_fourth
+        return iqr
